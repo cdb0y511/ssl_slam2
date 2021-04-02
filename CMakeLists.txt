@@ -29,7 +29,7 @@ if(NOT EIGEN3_FOUND)
 else()
   set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 endif()
-find_package(PCL REQUIRED)
+find_package(PCL 1.8.1 REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(GTSAM REQUIRED)
 include_directories(
@@ -51,7 +51,7 @@ link_directories(
 
 catkin_package(
   CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs
-  DEPENDS EIGEN3 PCL  
+  DEPENDS EIGEN3 PCL
   INCLUDE_DIRS include
 )
 

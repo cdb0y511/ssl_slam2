@@ -4,6 +4,7 @@
 
 #include "odomEstimationLocalizationClass.h"
 
+
 void OdomEstimationClass::init(lidar::Lidar lidar_param, double map_resolution, std::string map_path){
 
     //init local map

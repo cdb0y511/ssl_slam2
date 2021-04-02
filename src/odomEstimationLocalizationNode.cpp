@@ -30,10 +30,20 @@ OdomEstimationClass odomEstimation;
 std::mutex mutex_lock;
 std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudEdgeBuf;
 std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudSurfBuf;
+std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudBuf;
+
 lidar::Lidar lidar_param;
 std::string map_path;
+std::string savePose_path;
+std::string savePCD_path;
 ros::Publisher pubLaserOdometry;
 ros::Publisher pubMap;
+void velodynePointHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
+{
+    mutex_lock.lock();
+    pointCloudBuf.push(laserCloudMsg);
+    mutex_lock.unlock();
+}
 void velodyneSurfHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
 {
     mutex_lock.lock();
@@ -51,7 +61,14 @@ void velodyneEdgeHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
 bool is_odom_inited = false;
 double total_time =0;
 int total_frame=0;
+bool isSavePCD = false;
 void odom_estimation(){
+    std::ofstream stream(savePose_path, std::ios::out);
+    stream << std::setprecision(14);
+    stream
+            << "# Each pose gives the image_tr__pattern transformation (i.e., pattern to image with right-multiplication). Quaternions are written as used by the Eigen library."
+            << std::endl;
+    stream << "poses:" << std::endl;
     while(1){
         if(!pointCloudEdgeBuf.empty() && !pointCloudSurfBuf.empty()){
 
@@ -73,11 +90,21 @@ void odom_estimation(){
 
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_surf_in(new pcl::PointCloud<pcl::PointXYZRGB>());
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_edge_in(new pcl::PointCloud<pcl::PointXYZRGB>());
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZRGB>());
+
             pcl::fromROSMsg(*pointCloudEdgeBuf.front(), *pointcloud_edge_in);
             pcl::fromROSMsg(*pointCloudSurfBuf.front(), *pointcloud_surf_in);
+            pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
+
+            if(isSavePCD){
+                std::string path = savePCD_path+std::to_string(total_frame)+".pcd";
+                pcl::io::savePCDFile<pcl::PointXYZRGB>(path,*pointcloud_in);
+            }
+
             ros::Time pointcloud_time = (pointCloudEdgeBuf.front())->header.stamp;
             pointCloudEdgeBuf.pop();
             pointCloudSurfBuf.pop();
+            pointCloudBuf.pop();
             mutex_lock.unlock();
 
             if(is_odom_inited){
@@ -110,7 +137,18 @@ void odom_estimation(){
             laserOdometry.pose.pose.position.y = t_current.y();
             laserOdometry.pose.pose.position.z = t_current.z();
             pubLaserOdometry.publish(laserOdometry);
-
+            {
+                stream << "  - index: " << total_frame-1 << std::endl;
+                stream << "    finalCost: " << -1 << std::endl;
+                stream << "    tx: " << t_current.x() << std::endl;
+                stream << "    ty: " << t_current.y() << std::endl;
+                stream << "    tz: " << t_current.z() << std::endl;
+                stream << "    qx: " << q_current.x() << std::endl;
+                stream << "    qy: " << q_current.y() << std::endl;
+                stream << "    qz: " << q_current.z() << std::endl;
+                stream << "    qw: " << q_current.w() << std::endl;
+                stream.flush();
+            }
             static tf::TransformBroadcaster br;
             tf::Transform transform;
             transform.setOrigin( tf::Vector3(t_current.x(), t_current.y(), t_current.z()) );
@@ -158,6 +196,9 @@ int main(int argc, char **argv)
     nh.getParam("/offset_x", offset_x);
     nh.getParam("/offset_y", offset_y);
     nh.getParam("/offset_yaw", offset_yaw);
+    nh.getParam("/savePose_path", savePose_path);
+    nh.getParam("/savePCD_path", savePCD_path);
+    nh.getParam("/isSavePCD", isSavePCD);
 
     lidar_param.setScanPeriod(scan_period);
     lidar_param.setVerticalAngle(vertical_angle);
@@ -171,6 +212,8 @@ int main(int argc, char **argv)
 
     ros::Subscriber subEdgeLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_edge", 100, velodyneEdgeHandler);
     ros::Subscriber subSurfLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100, velodyneSurfHandler);
+    ros::Subscriber subSurfPointCloud = nh.subscribe<sensor_msgs::PointCloud2>("/camera/depth/color/points", 100, velodynePointHandler);
+
     pubMap = nh.advertise<sensor_msgs::PointCloud2>("/map", 100);
     pubLaserOdometry = nh.advertise<nav_msgs::Odometry>("/odom", 100);
     std::thread odom_estimation_process{odom_estimation};
