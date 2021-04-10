@@ -16,7 +16,7 @@
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
-
+#include <std_srvs/Trigger.h>
 //pcl lib
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
@@ -38,6 +38,25 @@ std::string savePose_path;
 std::string savePCD_path;
 ros::Publisher pubLaserOdometry;
 ros::Publisher pubMap;
+bool is_odom_inited = false;
+double total_time =0;
+int total_frame=0;
+
+bool savePCDCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res)
+{
+    for(int i = 0; i < total_frame; i++) {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZRGB>());
+        pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
+        std::string path = savePCD_path + std::to_string(i) + ".pcd";
+        pcl::io::savePCDFile<pcl::PointXYZRGB>(path, *pointcloud_in);
+        pointCloudBuf.pop();
+    }
+    //ROS_WARN("write feature map to folder ssl_slam2/map ...");
+    res.success = true;
+    res.message = "write pcd to folder ssl_slam2/pcd ...";
+    return true;
+}
+
 void velodynePointHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
 {
     mutex_lock.lock();
@@ -58,10 +77,7 @@ void velodyneEdgeHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
     mutex_lock.unlock();
 }
 
-bool is_odom_inited = false;
-double total_time =0;
-int total_frame=0;
-bool isSavePCD = false;
+
 void odom_estimation(){
     std::ofstream stream(savePose_path, std::ios::out);
     stream << std::setprecision(14);
@@ -90,21 +106,12 @@ void odom_estimation(){
 
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_surf_in(new pcl::PointCloud<pcl::PointXYZRGB>());
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_edge_in(new pcl::PointCloud<pcl::PointXYZRGB>());
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZRGB>());
-
             pcl::fromROSMsg(*pointCloudEdgeBuf.front(), *pointcloud_edge_in);
             pcl::fromROSMsg(*pointCloudSurfBuf.front(), *pointcloud_surf_in);
-            pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
-
-            if(isSavePCD){
-                std::string path = savePCD_path+std::to_string(total_frame)+".pcd";
-                pcl::io::savePCDFile<pcl::PointXYZRGB>(path,*pointcloud_in);
-            }
 
             ros::Time pointcloud_time = (pointCloudEdgeBuf.front())->header.stamp;
             pointCloudEdgeBuf.pop();
             pointCloudSurfBuf.pop();
-            pointCloudBuf.pop();
             mutex_lock.unlock();
 
             if(is_odom_inited){
@@ -198,7 +205,6 @@ int main(int argc, char **argv)
     nh.getParam("/offset_yaw", offset_yaw);
     nh.getParam("/savePose_path", savePose_path);
     nh.getParam("/savePCD_path", savePCD_path);
-    nh.getParam("/isSavePCD", isSavePCD);
 
     lidar_param.setScanPeriod(scan_period);
     lidar_param.setVerticalAngle(vertical_angle);
@@ -216,6 +222,10 @@ int main(int argc, char **argv)
 
     pubMap = nh.advertise<sensor_msgs::PointCloud2>("/map", 100);
     pubLaserOdometry = nh.advertise<nav_msgs::Odometry>("/odom", 100);
+
+    //map saving service
+    ros::ServiceServer srv_save = nh.advertiseService("save_pcd", savePCDCallback);
+
     std::thread odom_estimation_process{odom_estimation};
 
     ros::spin();

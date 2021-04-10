@@ -5,7 +5,6 @@
     <param name="/use_sim_time" value="true" />
     <param name="/savePose_path" value="$(find ssl_slam2)/poses/pose.yaml" />
     <param name="/savePCD_path" value="$(find ssl_slam2)/pcd/" />
-    <param name="/isSavePCD" value="false" />
 
     <param name="scan_period" value="0.1" />
     <param name="vertical_angle" type="double" value="2.0" />
