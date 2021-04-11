@@ -47,7 +47,7 @@ bool savePCDCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Respons
     for(int i = 0; i < total_frame; i++) {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
-        std::string path = savePCD_path + std::to_string(total_frame) + ".pcd";
+        std::string path = savePCD_path + std::to_string(i) + ".pcd";
         pcl::io::savePCDFile<pcl::PointXYZRGB>(path, *pointcloud_in);
         pointCloudBuf.pop();
     }
