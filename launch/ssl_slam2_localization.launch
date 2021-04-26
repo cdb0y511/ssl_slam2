@@ -1,10 +1,11 @@
 <?xml version="1.0"?>
 <launch>
     
-    <node name="bag" pkg="rosbag" type="play" args="--clock -r 0.5 -d 5 $(env HOME)/Downloads/MappingTest.bag" />
+    <node name="bag" pkg="rosbag" type="play" args="--clock -r 0.5 -d 5 $(env HOME)/datasets/workspace/bags/_2021-04-26-14-58-46.bag" />
     <param name="/use_sim_time" value="true" />
-    <param name="/savePose_path" value="$(find ssl_slam2)/poses/pose.yaml" />
-    <param name="/savePCD_path" value="$(find ssl_slam2)/pcd/" />
+    <param name="/savePose_path" value="/home/cd/datasets/workspace/map/pose.yaml" />
+    <param name="/savePCD_path" value="/home/cd/datasets/workspace/pcd/" />
+    <param name="map_path" type="str" value="/home/cd/datasets/workspace/map/" />
 
     <param name="scan_period" value="0.1" />
     <param name="vertical_angle" type="double" value="2.0" />
@@ -12,7 +13,6 @@
     <param name="map_resolution" type="double" value="0.05" />
     <param name="min_dis" type="double" value="0.1" />
     <param name="skip_frames" type="int" value="1" />
-    <param name="map_path" type="str" value="$(find ssl_slam2)/map/" />
     <!-- set initial location -->
     <param name="offset_x" type="double" value="0.0" />
     <param name="offset_y" type="double" value="0.0" />

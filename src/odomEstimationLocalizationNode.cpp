@@ -48,6 +48,17 @@ bool savePCDCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Respons
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
         std::string path = savePCD_path + std::to_string(i) + ".pcd";
+        std::vector<int> indices;
+        pcl::removeNaNFromPointCloud(*pointcloud_in, indices);
+        //coordinate transform
+        for (int i = 0; i < (int) pointcloud_in->points.size(); i++){
+            double new_x = pointcloud_in->points[i].z;
+            double new_y = -pointcloud_in->points[i].x;
+            double new_z = -pointcloud_in->points[i].y;
+            pointcloud_in->points[i].x = new_x;
+            pointcloud_in->points[i].y = new_y;
+            pointcloud_in->points[i].z = new_z;
+        }
         pcl::io::savePCDFile<pcl::PointXYZRGB>(path, *pointcloud_in);
         pointCloudBuf.pop();
     }
@@ -108,14 +119,11 @@ void odom_estimation(){
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_edge_in(new pcl::PointCloud<pcl::PointXYZRGB>());
             pcl::fromROSMsg(*pointCloudEdgeBuf.front(), *pointcloud_edge_in);
             pcl::fromROSMsg(*pointCloudSurfBuf.front(), *pointcloud_surf_in);
-
             ros::Time pointcloud_time = (pointCloudEdgeBuf.front())->header.stamp;
+            mutex_lock.unlock();
             pointCloudEdgeBuf.pop();
             pointCloudSurfBuf.pop();
-            mutex_lock.unlock();
-
             if(is_odom_inited){
-                
                 std::chrono::time_point<std::chrono::system_clock> start, end;
                 start = std::chrono::system_clock::now();
                 odomEstimation.matchPointsToMap(pointcloud_edge_in, pointcloud_surf_in);

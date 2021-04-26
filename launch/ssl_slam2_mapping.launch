@@ -1,21 +1,18 @@
 <?xml version="1.0"?>
 <launch>
-    <node name="bag" pkg="rosbag" type="play" args="--clock -r 0.5 $(env HOME)/Downloads/MappingTest.bag" />
-    <param name="/use_sim_time" value="true" /> 
+    <node name="bag" pkg="rosbag" type="play" args="--clock -r 0.5 $(env HOME)/datasets/workspace/bags/_2021-04-26-14-58-46.bag" />
+    <param name="/use_sim_time" value="true" />
 
-
+    <param name="map_path" type="str" value="/home/cd/datasets/workspace/map/" />
     <param name="scan_period" value="0.1" />
     <param name="vertical_angle" type="double" value="2.0" />
     <param name="max_dis" type="double" value="9.0" />
     <param name="map_resolution" type="double" value="0.02" />
     <param name="min_dis" type="double" value="0.1" />   
     <param name="skip_frames" type="int" value="1" />
-    <param name="map_path" type="str" value="$(find ssl_slam2)/map/" />
-
     <param name="min_map_update_distance" type="double" value="1.0" />
     <param name="min_map_update_angle" type="double" value="30" />
     <param name="min_map_update_frame" type="double" value="8" />
-
 
     <node pkg="ssl_slam2" type="ssl_slam2_laser_processing_node" name="ssl_slam2_laser_processing_node" output="log"/>
     <node pkg="ssl_slam2" type="ssl_slam2_odom_estimation_mapping_node" name="ssl_slam2_odom_estimation_mapping_node" output="log"/>
